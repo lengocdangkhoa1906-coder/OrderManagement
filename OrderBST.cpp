@@ -1,11 +1,11 @@
-#include "BSTDonHang.h"
+#include "OrderBST.h"
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
 
 BSTDonHang::Node::Node(Order* don) {
-    ngay = don->ngayTao;
+    ngay = don->getCreatedAt();
     danhSachDon.push_back(don);
     left = nullptr;
     right = nullptr;
@@ -24,9 +24,10 @@ BSTDonHang::Node* BSTDonHang::insert(Node* node, Order* don) {
         return new Node(don);
     }
 
-    if (don->ngayTao < node->ngay) {
+    const string ngayTao = don->getCreatedAt();
+    if (ngayTao < node->ngay) {
         node->left = insert(node->left, don);
-    } else if (don->ngayTao > node->ngay) {
+    } else if (ngayTao > node->ngay) {
         node->right = insert(node->right, don);
     } else {
         // Nhieu don co cung ngay tao se duoc luu chung trong vector.
@@ -47,6 +48,10 @@ void BSTDonHang::insert(Order* don) {
 }
 
 vector<Order*> BSTDonHang::search(const string& ngay) const {
+    if (!Order::isValidDate(ngay)) {
+        return {};
+    }
+
     Node* current = root;
 
     while (current != nullptr) {
@@ -70,14 +75,7 @@ void BSTDonHang::inorder(Node* node) const {
     inorder(node->left);
 
     for (Order* don : node->danhSachDon) {
-        if (don != nullptr) {
-            cout << left << setw(10) << don->maDon
-                 << setw(20) << don->tenKhachHang
-                 << setw(13) << don->ngayTao
-                 << setw(14) << fixed << setprecision(0)
-                 << don->tongTien
-                 << tenTrangThai(don->trangThai) << '\n';
-        }
+        don->display();
     }
 
     inorder(node->right);
@@ -85,10 +83,10 @@ void BSTDonHang::inorder(Node* node) const {
 
 void BSTDonHang::inorder() const {
     cout << "\nDanh sach don hang theo ngay tang dan:\n";
-    cout << left << setw(10) << "Ma don"
-         << setw(20) << "Khach hang"
-         << setw(13) << "Ngay tao"
-         << setw(14) << "Tong tien"
+    cout << left << setw(12) << "Ma don"
+         << setw(24) << "Khach hang"
+         << setw(15) << "Ngay tao"
+         << setw(18) << "Tong tien"
          << "Trang thai\n";
     inorder(root);
 }
@@ -119,7 +117,7 @@ vector<Order*> BSTDonHang::searchByDateRange(
 
     vector<Order*> ketQua;
 
-    if (tuNgay > denNgay) {
+    if (!Order::isValidDate(tuNgay) || !Order::isValidDate(denNgay) || tuNgay > denNgay) {
         return ketQua;
     }
 

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include "Order.h"
+#include "order.h"
 
 class BSTDonHang {
 private:
@@ -33,6 +33,7 @@ public:
     BSTDonHang(const BSTDonHang&) = delete;
     BSTDonHang& operator=(const BSTDonHang&) = delete;
 
+    // Cac Order phai con ton tai va giu nguyen ngay tao trong suot vong doi cay.
     void insert(Order* don);
     std::vector<Order*> search(const std::string& ngay) const;
     void inorder() const;

@@ -39,10 +39,11 @@ Order::Order()
 
 Order::Order(const std::string& id, const std::string& customerName,
     const std::string& createdAt, long long totalAmount, OrderStatus status) {
-    if (id.empty()) {
-        throw std::invalid_argument("Ma don hang khong duoc de trong.");
+    if (id.empty() || std::isspace(static_cast<unsigned char>(id.front())) ||
+        std::isspace(static_cast<unsigned char>(id.back()))) {
+        throw std::invalid_argument("Ma don phai co noi dung va khong co khoang trang dau/cuoi.");
     }
-    if (customerName.empty()) {
+    if (customerName.find_first_not_of(" \t\n\r\f\v") == std::string::npos) {
         throw std::invalid_argument("Ten khach hang khong duoc de trong.");
     }
     if (!isValidDate(createdAt)) {
@@ -84,7 +85,7 @@ void Order::setStatus(OrderStatus newStatus) {
 }
 
 void Order::setCustomerName(const std::string& name) {
-    if (name.empty()) {
+    if (name.find_first_not_of(" \t\n\r\f\v") == std::string::npos) {
         throw std::invalid_argument("Ten khach hang khong duoc de trong.");
     }
     this->customerName = name;

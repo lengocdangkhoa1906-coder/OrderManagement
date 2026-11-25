@@ -14,7 +14,7 @@ using namespace std;
 // Do phuc tap: O(n)
 map<OrderStatus, int> countByStatus(HashTable &hash);
 
-// Tong gia tri (VND) cua tat ca don hang.
+// Tong gia tri (VND) cua tat ca don hang. Bao overflow_error neu vuot long long.
 // Do phuc tap: O(n)
 long long sumAllAmounts(HashTable &hash);
 
@@ -23,7 +23,7 @@ long long sumAllAmounts(HashTable &hash);
 vector<Order *> filterByStatus(HashTable &hash, OrderStatus status);
 
 // 3 don co tong tien lon nhat, sap giam dan (it hon 3 don thi tra ve so don hien co).
-// Do phuc tap: O(n), bo nho phu O(1)
+// Dong gia thi xep ma don tang dan. Thoi gian O(n log n), bo nho phu O(n).
 vector<Order *> top3Orders(HashTable &hash);
 
 // Doi trang thai sang chuoi de in ra man hinh.

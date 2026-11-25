@@ -1,5 +1,8 @@
 #include "statistics.h"
 #include <iostream>
+#include <limits>
+#include <stdexcept>
+#include <utility>
 
 using namespace std;
 
@@ -50,7 +53,11 @@ long long sumAllAmounts(HashTable &hash)
     vector<Order *> list = hash.allOrders();
     for (size_t i = 0; i < list.size(); ++i)
     {
-        total += list[i]->getTotalAmount();
+        const long long amount = list[i]->getTotalAmount();
+        if (amount > numeric_limits<long long>::max() - total) {
+            throw overflow_error("Tong gia tri vuot gioi han so nguyen 64 bit.");
+        }
+        total += amount;
     }
     return total;
 }
@@ -70,35 +77,65 @@ vector<Order *> filterByStatus(HashTable &hash, OrderStatus status)
     return result;
 }
 
-// 4. Top 3 don co tong tien lon nhat - O(n), bo nho phu O(1)
-// Duyet 1 lan, giu mang best[3] sap giam dan; moi don chen vao dung cho (toi da 3 buoc).
-vector<Order *> top3Orders(HashTable &hash)
-{
-    Order *best[3] = {nullptr, nullptr, nullptr};
-    vector<Order *> list = hash.allOrders();
-
-    for (size_t i = 0; i < list.size(); ++i)
-    {
-        Order *cur = list[i];
-        for (int k = 0; k < 3; ++k)
-        {
-            if (best[k] == nullptr || cur->getTotalAmount() > best[k]->getTotalAmount())
-            {
-                for (int m = 2; m > k; --m)
-                { // doi cac vi tri sau xuong 1 bac
-                    best[m] = best[m - 1];
-                }
-                best[k] = cur;
-                break;
-            }
+namespace {
+class OrderMaxHeap {
+public:
+    void insert(Order* order) {
+        orders.push_back(order);
+        size_t index = orders.size() - 1;
+        while (index > 0) {
+            const size_t parent = (index - 1) / 2;
+            if (!higherPriority(orders[index], orders[parent])) break;
+            swap(orders[index], orders[parent]);
+            index = parent;
         }
     }
 
-    vector<Order *> result;
-    for (int k = 0; k < 3; ++k)
-    {
-        if (best[k] != nullptr)
-            result.push_back(best[k]);
+    Order* extractMax() {
+        if (orders.empty()) return nullptr;
+        Order* largest = orders.front();
+        orders.front() = orders.back();
+        orders.pop_back();
+        heapify(0);
+        return largest;
+    }
+
+private:
+    vector<Order*> orders;
+
+    static bool higherPriority(const Order* left, const Order* right) {
+        if (left->getTotalAmount() != right->getTotalAmount()) {
+            return left->getTotalAmount() > right->getTotalAmount();
+        }
+        return left->getId() < right->getId();
+    }
+
+    void heapify(size_t index) {
+        while (index < orders.size() / 2) {
+            size_t child = 2 * index + 1;
+            if (child + 1 < orders.size() && higherPriority(orders[child + 1], orders[child])) {
+                ++child;
+            }
+            if (!higherPriority(orders[child], orders[index])) break;
+            swap(orders[child], orders[index]);
+            index = child;
+        }
+    }
+};
+} // namespace
+
+vector<Order *> top3Orders(HashTable &hash)
+{
+    OrderMaxHeap heap;
+    for (Order* order : hash.allOrders()) {
+        heap.insert(order);
+    }
+
+    vector<Order*> result;
+    while (result.size() < 3) {
+        Order* order = heap.extractMax();
+        if (order == nullptr) break;
+        result.push_back(order);
     }
     return result;
 }
@@ -121,12 +158,6 @@ void showFilterByStatus(HashTable &hash, OrderStatus status)
 
 void showStatistics(HashTable &hash)
 {
-    if (hash.size() == 0)
-    {
-        cout << "Chua co don hang nao de thong ke.\n";
-        return;
-    }
-
     cout << "\n========== THONG KE DON HANG ==========\n";
     cout << "Tong so don: " << hash.size() << "\n";
 
@@ -137,7 +168,12 @@ void showStatistics(HashTable &hash)
         cout << "  " << statusName(it->first) << ": " << it->second << "\n";
     }
 
-    cout << "\nTong gia tri tat ca don: " << sumAllAmounts(hash) << " VND\n";
+    try {
+        const long long total = sumAllAmounts(hash);
+        cout << "\nTong gia tri tat ca don: " << total << " VND\n";
+    } catch (const overflow_error& error) {
+        cout << '\n' << error.what() << '\n';
+    }
 
     cout << "\n-- TOP 3 don co gia tri lon nhat --\n";
     vector<Order *> top = top3Orders(hash);

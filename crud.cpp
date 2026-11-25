@@ -1,37 +1,13 @@
 ﻿#include "crud.h"
 #include <iostream>
-#include <limits>
+#include <sstream>
+#include <stdexcept>
 
 using namespace std;
 
-// Kiem tra nam nhuan
-bool isLeapYear(int year) {
-    return (year % 400 == 0) || (year % 4 == 0 && year % 100 != 0);
-}
-
 // Kiem tra ngay hop le theo dinh dang YYYY-MM-DD
 bool isValidDate(const string& date) {
-    if (date.length() != 10 || date[4] != '-' || date[7] != '-') {
-        return false;
-    }
-    for (int i = 0; i < 10; i++) {
-        if (i == 4 || i == 7) continue;
-        if (date[i] < '0' || date[i] > '9') return false;
-    }
-
-    int year = stoi(date.substr(0, 4));
-    int month = stoi(date.substr(5, 2));
-    int day = stoi(date.substr(8, 2));
-
-    if (year < 1900 || year > 2100) return false;
-    if (month < 1 || month > 12) return false;
-
-    int daysInMonth[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-    if (isLeapYear(year)) {
-        daysInMonth[2] = 29;
-    }
-
-    return day >= 1 && day <= daysInMonth[month];
+    return Order::isValidDate(date);
 }
 
 // Sap xep danh sach con tro Order* tang dan theo ma don (Insertion Sort - Chuong 3)
@@ -52,52 +28,47 @@ void sortOrdersById(vector<Order*>& list) {
 bool createOrder(HashTable& hash, OrderQueue& queue,
     const string& id, const string& customerName,
     const string& createdAt, long long totalAmount) {
-    if (id.empty() || customerName.empty()) {
-        cout << "[Loi] Ma don va ten khach hang khong duoc de trong.\n";
-        return false;
-    }
     if (hash.find(id) != nullptr) {
         cout << "[Loi] Ma don '" << id << "' da ton tai.\n";
         return false;
     }
-    if (!isValidDate(createdAt)) {
-        cout << "[Loi] Ngay tao '" << createdAt << "' khong hop le (chuan YYYY-MM-DD).\n";
-        return false;
-    }
-    if (totalAmount < 0) {
-        cout << "[Loi] Tong tien phai >= 0.\n";
-        return false;
-    }
-
-    Order newOrder(id, customerName, createdAt, totalAmount, OrderStatus::PENDING);
-    if (!hash.insert(newOrder)) {
-        cout << "[Loi] Khong the luu don hang vao he thong.\n";
+    try {
+        if (!hash.insert(Order(id, customerName, createdAt, totalAmount))) {
+            return false;
+        }
+    } catch (const invalid_argument& error) {
+        cout << "[Loi] " << error.what() << '\n';
         return false;
     }
 
     // Lay dia chi Order vua luu trong HashTable de day vao Queue cho duyet
-    Order* storedPtr = hash.find(id);
-    if (storedPtr != nullptr) {
-        queue.enqueue(storedPtr);
+    try {
+        if (queue.enqueue(hash.find(id))) {
+            return true;
+        }
+    } catch (...) {
+        hash.erase(id);
+        throw;
     }
-    return true;
+    hash.erase(id);
+    cout << "[Loi] Khong the them don vao hang doi.\n";
+    return false;
 }
 
 void inputAndCreateOrder(HashTable& hash, OrderQueue& queue) {
-    string id, customerName, createdAt;
+    string id, customerName, createdAt, amountText;
     long long totalAmount;
 
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cout << "Nhap ma don (VD: DH0001): ";
-    getline(cin, id);
+    if (!getline(cin, id)) return;
     cout << "Nhap ten khach hang: ";
-    getline(cin, customerName);
+    if (!getline(cin, customerName)) return;
     cout << "Nhap ngay tao (YYYY-MM-DD): ";
-    getline(cin, createdAt);
+    if (!getline(cin, createdAt)) return;
     cout << "Nhap tong tien (VND): ";
-    if (!(cin >> totalAmount)) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    if (!getline(cin, amountText)) return;
+    istringstream amountInput(amountText);
+    if (!(amountInput >> totalAmount) || !(amountInput >> ws).eof()) {
         cout << "[Loi] So tien nhap vao khong hop le.\n";
         return;
     }
@@ -171,7 +142,7 @@ void listOrders(HashTable& hash) {
     }
 }
 
-void printTest(const char* name, bool pass) {
+static void printTest(const char* name, bool pass) {
     cout << (pass ? "[PASS] " : "[FAIL] ") << name << "\n";
 }
 
@@ -205,4 +176,10 @@ void testCRUD() {
     printTest("5. Xoa don DH0002 dong bo ca HashTable va OrderQueue", t5);
 
     printTest("6. Chan xoa ma khong ton tai", !deleteOrder(hash, queue, "DH9999"));
+    const bool rejectsWhitespace =
+        !createOrder(hash, queue, " DH0008", "An", "2026-11-18", 100) &&
+        !createOrder(hash, queue, "DH0008 ", "An", "2026-11-18", 100) &&
+        !createOrder(hash, queue, "DH0008", " \t", "2026-11-18", 100);
+    printTest("7. Chan ma co khoang trang dau/cuoi va ten chi co khoang trang",
+              rejectsWhitespace && hash.size() == 2 && queue.size() == 2);
 }

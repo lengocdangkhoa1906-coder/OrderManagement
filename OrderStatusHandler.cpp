@@ -1,9 +1,9 @@
-#include "XuLyTrangThai.h"
+#include "OrderStatusHandler.h"
 #include <iostream>
 
 using namespace std;
 
-bool XuLyTrangThai::pheDuyet(
+bool OrderStatusHandler::pheDuyet(
     Order* don,
     const function<bool(const string&)>& removeFromQueue) {
 
@@ -12,23 +12,23 @@ bool XuLyTrangThai::pheDuyet(
         return false;
     }
 
-    if (don->trangThai != CHO_PHE_DUYET) {
+    if (don->getStatus() != OrderStatus::PENDING) {
         cout << "Khong the phe duyet: don khong o trang thai Cho phe duyet.\n";
         return false;
     }
 
-    don->trangThai = DA_PHE_DUYET;
-
-    // Don da duoc phe duyet thi khong con nam trong Queue cho phe duyet.
-    if (removeFromQueue) {
-        removeFromQueue(don->maDon);
+    const string id = don->getId();
+    if (!removeFromQueue || !removeFromQueue(id)) {
+        cout << "Khong the phe duyet: khong go duoc don khoi Queue.\n";
+        return false;
     }
 
-    cout << "Phe duyet don " << don->maDon << " thanh cong.\n";
+    don->setStatus(OrderStatus::APPROVED);
+    cout << "Phe duyet don " << id << " thanh cong.\n";
     return true;
 }
 
-bool XuLyTrangThai::huyDon(
+bool OrderStatusHandler::huyDon(
     Order* don,
     const function<bool(const string&)>& removeFromQueue) {
 
@@ -37,34 +37,35 @@ bool XuLyTrangThai::huyDon(
         return false;
     }
 
-    if (don->trangThai != CHO_PHE_DUYET) {
+    if (don->getStatus() != OrderStatus::PENDING) {
         cout << "Khong the huy: chi huy don dang Cho phe duyet.\n";
         return false;
     }
 
-    don->trangThai = DA_HUY;
-
-    // Don da huy phai duoc dua ra khoi Queue.
-    if (removeFromQueue) {
-        removeFromQueue(don->maDon);
+    const string id = don->getId();
+    if (!removeFromQueue || !removeFromQueue(id)) {
+        cout << "Khong the huy: khong go duoc don khoi Queue.\n";
+        return false;
     }
 
-    cout << "Huy don " << don->maDon << " thanh cong.\n";
+    don->setStatus(OrderStatus::CANCELLED);
+    cout << "Huy don " << id << " thanh cong.\n";
     return true;
 }
 
-bool XuLyTrangThai::hoanThanh(Order* don) {
+bool OrderStatusHandler::hoanThanh(Order* don) {
     if (don == nullptr) {
         cout << "Khong tim thay don hang.\n";
         return false;
     }
 
-    if (don->trangThai != DA_PHE_DUYET) {
+    if (don->getStatus() != OrderStatus::APPROVED) {
         cout << "Khong the hoan thanh: don phai duoc phe duyet truoc.\n";
         return false;
     }
 
-    don->trangThai = HOAN_THANH;
-    cout << "Don " << don->maDon << " da hoan thanh.\n";
+    const string id = don->getId();
+    don->setStatus(OrderStatus::COMPLETED);
+    cout << "Don " << id << " da hoan thanh.\n";
     return true;
 }
